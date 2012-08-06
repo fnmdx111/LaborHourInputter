@@ -1,3 +1,4 @@
 .idea
 *.xls
-
+*.pyc
+.ropeproject
