@@ -1,0 +1,6 @@
+.idea
+*.xls
+*.pyc
+.ropeproject
+*.db
+*.sqlite
