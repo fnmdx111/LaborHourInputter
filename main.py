@@ -7,28 +7,45 @@ from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 import sys
 import datetime
-from misc import take, interleave, take_adj
+from misc import take, interleave, take_adj, concat_prf
 import config
+from sqlite_writer import SQLiteOperator
 from xls_oprt import ExcelOperator
 
 
 class Form(QDialog, object):
 
-    _font = QFont(u'Arial', 14)
+    _font = QFont(u'Consolas', 14)
     _le_attributes = [[['day', 'month', 'labor_hour_sum'],
                        ['worker_id', 'worker_name', 'waste_sum']],
                       [['waste_1', 'waste_2', 'waste_3'],
                        ['assist_1', 'assist_2', 'assist_sum'],
-                       ['worker_id_aux', 'worker_name_aux', 'labor_hour_sum_aux']]]
+                       ['worker_id_aux', 'worker_name_aux', 'labor_hour_aux']]]
     _le_attributes = map(lambda sub_list: map(lambda l: map(lambda item: 'le_' + item, l), sub_list), _le_attributes)
     _le_labels = [[[u'日期', u'月份', u'工时合计'],
                    [u'编号', u'姓名', u'废品合计']],
                   [[u'废品1', u'废品2', u'废品3'],
                    [u'辅助1', u'辅助2', u'辅助合计'],
                    [u'编号', u'姓名', u'工时']]]
+    _max_le_amount = config.max_pair_num
+    _pair_widget_range = range(1, _max_le_amount + 1)
+    _waste_widget_range = range(1, 4)
+    _assist_widget_range = range(1, 3)
+    _labor_hour_prf = 'le_labor_hour_'
+    _real_amount_prf = 'le_real_amount_'
+    _labor_hour_attrs = map(concat_prf(_labor_hour_prf),
+                            _pair_widget_range)
+    _real_amount_attrs = map(concat_prf(_real_amount_prf),
+                             _pair_widget_range)
+    _hour_amount_pair = zip(_labor_hour_attrs,
+                            _real_amount_attrs)
+    _waste_attrs = map(concat_prf('le_waste_'), _waste_widget_range)
+    _assist_attrs = map(concat_prf('le_assist_'), _assist_widget_range)
     _btn_attributes = ['ok', 'find', 'fix', 'reset']
     _btn_labels = [u'确定', u'找回', u'改正', u'重置']
-    _max_le_amount = 9
+    _editable_widget_attrs = list(interleave(_labor_hour_attrs, _real_amount_attrs)) +\
+                             _waste_attrs + _assist_attrs + ['le_worker_id_aux']
+
     def __init__(self, parent=None):
         super(Form, self).__init__(parent)
 
@@ -37,43 +54,236 @@ class Form(QDialog, object):
         self.resize(920, 670)
         self.setSizePolicy(QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed))
 
-        self.setLayout(self.init_layouts())
+        self.setLayout(self.gen_main_layout())
 
         self.le_worker_name.setFixedSize(100, 30)
 
         self.set_time_attributes()
-        for _le_attr in ['le_waste_sum', 'le_labor_hour_sum', 'le_assist_sum']:
+        for _le_attr in ['le_waste_sum',
+                         'le_labor_hour_sum',
+                         'le_assist_sum',
+                         'le_labor_hour_aux']:
             self.__getattribute__(_le_attr).setReadOnly(True)
 
+        self.make_connections()
 
-        self.connect(self.le_worker_id,
-                     SIGNAL('textChanged(QString)'),
-                     partial(self.update_worker_name, which_one=self.le_worker_name))
-        self.connect(self.le_worker_id_aux,
-            SIGNAL('textChanged(QString)'),
-            partial(self.update_worker_name, which_one=self.le_worker_name_aux))
-
-        self.xls_operator = ExcelOperator(config.XLS_PATH)
-        self.worker_dict = self.xls_operator.get_id_name_pairs()
-        self.set_tab_order()
+        self.worker_dict = ExcelOperator(config.XLS_PATH).get_id_name_pairs()
+        self.set_tab_orders()
         self.le_worker_id.setFocus()
-        # self.load_workers()
+
+        self.db_operator = SQLiteOperator(unicode(self.dt.day), self.worker_dict)
+
+        self.validate_worker_id = lambda text: self._validate_text(text, u'请检查员工信息！')
+        self.validate_day = lambda text: self._validate_text(text, u'请检查日期！')
 
 
-    def set_tab_order(self):
-        def _(prefix):
-            return lambda x: prefix + str(x)
+    _sqlite_attrs = ['le_worker_id'] +\
+                    list(interleave(_labor_hour_attrs,
+                                    _real_amount_attrs)) +\
+                   _waste_attrs + _assist_attrs +\
+                   ['le_worker_id_aux']
+    _sqlite_col_names = map(lambda s: unicode(s[3:]), _sqlite_attrs)
+    def dump_all(self):
+        result = {}
+        for key, attr in zip(Form._sqlite_col_names,
+                             Form._sqlite_attrs):
+            text = unicode(self.__getattribute__(attr).text())
+            if attr == 'le_worker_id':
+                if not self.validate_worker_id(text):
+                    return {}
 
-        for prev, succ in take_adj(list(
-                            chain(['le_worker_id', 'le_worker_name'],
-                                  interleave(map(_('le_labor_hour_'),
-                                                 range(1, Form._max_le_amount + 1)),
-                                             map(_('le_real_amount_'),
-                                                 range(1, Form._max_le_amount + 1))),
-                                  map(_('le_waste_'), range(1, 4)),
-                                  map(_('le_assist_'), range(1, 3)),
-                                  ['le_worker_id_aux', 'le_worker_name_aux', 'le_labor_hour_sum_aux'],
-                                  map(lambda x: 'btn_' + x, Form._btn_attributes)))):
+            if text.isdigit():
+                result[key] = int(text)
+            else:
+                if config.FORCE_OVERRIDE:
+                    result[key] = None
+
+        return result
+
+
+
+    def make_connections(self):
+        self.connect(self.le_worker_id,
+                     SIGNAL('textEdited(QString)'),
+                     partial(self.update_worker_name,
+                             which_one=self.le_worker_name))
+        self.connect(self.le_worker_id_aux,
+                     SIGNAL('textEdited(QString)'),
+                     partial(self.update_worker_name,
+                             which_one=self.le_worker_name_aux))
+        self.connect(self.le_worker_name,
+                     SIGNAL('textEdited(QString)'),
+                     partial(self.update_worker_id,
+                             which_one=self.le_worker_id))
+        self.connect(self.le_worker_name_aux,
+                     SIGNAL('textEdited(QString)'),
+                     partial(self.update_worker_id,
+                             which_one=self.le_worker_id_aux))
+        self.connect_lot(Form._waste_attrs,
+                         self.le_waste_sum)
+        self.connect_lot(Form._assist_attrs,
+                         self.le_assist_sum)
+        self.connect_group()
+        self.connect(self.btn_ok,
+                     SIGNAL('clicked()'),
+                     self.btn_ok_clicked)
+        self.connect(self.btn_find,
+                     SIGNAL('clicked()'),
+                     self.btn_find_clicked)
+        self.connect(self.le_labor_hour_sum,
+                     SIGNAL('textChanged(QString)'),
+                     self.update_labor_hour_aux)
+
+
+    def update_labor_hour_aux(self, content):
+        if content:
+            content = float(content)
+            if content < 8:
+                hour_aux = 4
+            elif 8 <= content < 12:
+                hour_aux = 6
+            elif 12 <= content < 16:
+                hour_aux = 8
+            else:
+                hour_aux = 10
+            self.le_labor_hour_aux.setText(unicode(hour_aux))
+
+
+    def _validate_text(self, text, error_msg):
+        if (not text) or (text == u'0'):
+            QMessageBox.critical(self, u'错误', error_msg, QMessageBox.Ok)
+            return False
+
+        return True
+
+
+    def clear_all_editable(self, except_=('le_worker_name',)):
+        for attr in Form._editable_widget_attrs + ['le_worker_name', 'le_worker_name_aux']:
+            if attr in except_:
+                continue
+            self.__getattribute__(attr).setText(u'')
+
+
+    def query_last_worker_aux(self, worker_id, day):
+        result = self.db_operator.retrieve(worker_id, day)
+        if result:
+            result = result[0]['worker_id_aux']
+            if result:
+                return result
+
+        return False
+
+
+    def btn_ok_clicked(self):
+        day = unicode(self.le_day.text())
+        if not self.validate_day(day):
+            return
+
+        dumped = self.dump_all()
+
+        # 先清除上个辅助工人的工时
+        last_worker_id_aux = self.query_last_worker_aux(dumped['worker_id'],
+                                                        day)
+        if last_worker_id_aux:
+            self.db_operator.write_back_single(
+                last_worker_id_aux,
+                None, day
+            )
+
+        if dumped:
+            self.db_operator.write_back(dumped, day)
+
+        worker_aux = unicode(self.le_worker_id_aux.text())
+        if worker_aux:
+            worker_aux = int(worker_aux)
+            labor_hour_aux = int(self.le_labor_hour_aux.text())
+
+            self.db_operator.write_back_single(worker_aux, labor_hour_aux, day)
+
+        self.clear_all_editable(except_=())
+        self.le_worker_id.setFocus()
+        self.le_worker_id.selectAll()
+
+
+    def btn_find_clicked(self):
+        worker_id = unicode(self.le_worker_id.text())
+        day = unicode(self.le_day.text())
+        if not self.validate_worker_id(worker_id):
+            return
+        else:
+            worker_id = int(worker_id)
+        if not self.validate_day(day):
+            return
+
+        results = self.db_operator.retrieve(worker_id, day)
+        if results: # TODO decide whether labor_hour_aux_to should be added to labor hour sum.
+            results = results[0].items()
+
+            _, labor_hour_aux_to = results[-1]
+
+            self.clear_all_editable()
+            for attr, (_, item) in zip(Form._editable_widget_attrs,
+                                       results[1:-1]):
+                if item:
+                    self.__getattribute__(attr).setText(unicode(item))
+
+            self.update_worker_name(self.le_worker_id_aux.text(), self.le_worker_name_aux)
+            self.update_worker_name(self.le_worker_id.text(), self.le_worker_name)
+
+
+    def connect_lot(self, attrs, sum_widget):
+        target_func = self.gen_update_sum_slot(attrs, sum_widget)
+        for attr in attrs:
+            self.connect(self.__getattribute__(attr),
+                         SIGNAL('textChanged(QString)'),
+                         target_func)
+
+
+    def connect_group(self):
+        for attrs in Form._hour_amount_pair:
+            for attr in attrs:
+                self.connect(self.__getattribute__(attr),
+                             SIGNAL('textChanged(QString)'),
+                             self.update_labor_hour_sum)
+
+
+    def update_labor_hour_sum(self):
+        labor_hour_sum = .0
+        for lb_attr, ra_attr in Form._hour_amount_pair:
+            labor_hour = unicode(self.__getattribute__(lb_attr).text())
+            real_amount = unicode(self.__getattribute__(ra_attr).text())
+
+            if labor_hour and real_amount:
+                labor_hour, real_amount = map(float, (labor_hour, real_amount))
+                if labor_hour:
+                    labor_hour_sum += (real_amount / labor_hour) if labor_hour else .0
+        labor_hour_sum *= 8
+        labor_hour_sum = round(labor_hour_sum, 1)
+
+        self.le_labor_hour_sum.setText(unicode(labor_hour_sum))
+
+
+    def update_worker_id(self, worker_name, which_one):
+        inverted = {value: key for key, value in self.worker_dict.iteritems()}
+        text = ''
+        worker_name = unicode(worker_name)
+        if worker_name in inverted:
+            text = inverted[worker_name]
+        elif worker_name:
+            text = u'查无此人'
+        which_one.setText(text)
+
+
+    def set_tab_orders(self):
+        for prev, succ in take_adj(list(chain(
+                ['le_worker_id', 'le_worker_name'],
+                interleave(Form._labor_hour_attrs,
+                           Form._real_amount_attrs),
+                Form._waste_attrs,
+                Form._assist_attrs,
+                ['le_worker_id_aux', 'le_worker_name_aux',
+                 'le_labor_hour_aux'],
+                map(concat_prf('btn_'), Form._btn_attributes)))):
             if succ:
                 prev_widget = self.__getattribute__(prev)
                 succ_widget = self.__getattribute__(succ)
@@ -83,21 +293,32 @@ class Form(QDialog, object):
                                  succ_widget)
         self.setTabOrder(self.btn_reset, self.le_worker_id)
 
+        self.le_day.setFocusPolicy(Qt.StrongFocus ^ Qt.TabFocus)
+        self.le_month.setFocusPolicy(Qt.StrongFocus ^ Qt.TabFocus)
+
 
     def update_worker_name(self, worker_id, which_one):
         worker_id = unicode(worker_id)
-        if worker_id.isdigit():
-            if worker_id in self.worker_dict:
-                which_one.setText(self.worker_dict[worker_id])
-            else:
-                which_one.setText(u'查无此人')
+        text = ''
+        if worker_id in self.worker_dict:
+            text = self.worker_dict[worker_id]
+        elif worker_id:
+            text = u'查无此人'
+        which_one.setText(text)
 
 
-    def gen_update_sum_slot(self, target_attrs, sum_widget, func):
-        pass
+    def gen_update_sum_slot(self, target_attrs, sum_widget):
+        def _():
+            values = map(int,
+                         filter(lambda x: x,
+                                map(lambda attr: self.__getattribute__(attr).text(),
+                                    target_attrs)))
+            sum_widget.setText(unicode(sum(values)))
+
+        return _
 
 
-    def init_layouts(self):
+    def gen_main_layout(self):
         v_layout = QVBoxLayout()
 
         title = QLabel(u'<center><font color="blue"><b>保 持 架 分 厂 工 时 录 入 系 统</b></font></center>')
@@ -105,9 +326,9 @@ class Form(QDialog, object):
         v_layout.addWidget(title)
 
         v_layout.addStretch()
-        for _ in [self.gen_g_layout(Form._le_attributes[0], Form._le_labels[0]),
+        for _ in (self.gen_g_layout(Form._le_attributes[0], Form._le_labels[0]),
                   self.gen_labor_hour_layout(),
-                  self.gen_g_layout(Form._le_attributes[1], Form._le_labels[1])]:
+                  self.gen_g_layout(Form._le_attributes[1], Form._le_labels[1])):
             v_layout.addLayout(_)
             v_layout.addStretch()
 
@@ -140,7 +361,7 @@ class Form(QDialog, object):
     def gen_labor_hour_layout(self):
         h_layout = QHBoxLayout()
         h_layout.addStretch()
-        for col_num, nums in enumerate(take(range(1, Form._max_le_amount + 1),
+        for col_num, nums in enumerate(take(Form._pair_widget_range,
                                             by=3)):
             gl = QGridLayout()
             gl.addWidget(self.gen_label(u'班产'), 0, 0, Qt.AlignLeft)
@@ -152,8 +373,8 @@ class Form(QDialog, object):
                     gl.addWidget(line_edit, cnt + 1, col)
                     self.__setattr__(attr_prefix + str(num), line_edit)
 
-                _('le_labor_hour_', 0)
-                _('le_real_amount_', 1)
+                _(Form._labor_hour_prf, 0)
+                _(Form._real_amount_prf, 1)
             h_layout.addLayout(gl)
             # if col_num < 2:
             h_layout.addStretch()
@@ -164,17 +385,17 @@ class Form(QDialog, object):
     def set_time_attributes(self):
         dt = datetime.date.today()
         self.dt = dt
-        self.le_day.setText(str(dt.day))
+        self.le_day.setText(unicode(dt.day))
         self.le_day.last_content = self.le_day.text()
-        self.le_month.setText(str(dt.month))
+        self.le_month.setText(unicode(dt.month))
         self.le_month.last_content = self.le_month.text()
 
         self.le_day.maximum = calendar.monthrange(dt.year, dt.month)[1]
         self.le_month.maximum = 12
 
-        self.connect(self.le_day, SIGNAL('textChanged(QString)'), self.restrict_content)
-        self.connect(self.le_month, SIGNAL('textChanged(QString)'), self.restrict_content)
-        self.connect(self.le_month, SIGNAL('textChanged(QString)'), self.update_le_day_maximum)
+        self.connect(self.le_day, SIGNAL('textEdited(QString)'), self.restrict_content)
+        self.connect(self.le_month, SIGNAL('textEdited(QString)'), self.restrict_content)
+        self.connect(self.le_month, SIGNAL('textEdited(QString)'), self.update_le_day_maximum)
 
 
     def update_le_day_maximum(self, content):
@@ -202,7 +423,7 @@ class Form(QDialog, object):
             for i, (attr, label) in enumerate(zip(attrs, labels)):
                 gls[i].addWidget(self.gen_label(label), row, 0)
 
-                numeric_only = False if 'name' in attr else True
+                numeric_only = False if ('name' in attr) or ('sum' in attr) else True
                 line_edit = self.produce_eligible_line_edit(numeric_only)
 
                 gls[i].addWidget(line_edit, row, 1)
@@ -219,6 +440,7 @@ class Form(QDialog, object):
 
     def produce_eligible_line_edit(self, numeric_only, width=80):
         line_edit = QLineEdit()
+        line_edit.setText(config.DEFAULT_TEXT)
 
         line_edit.setFixedSize(width, 30)
         line_edit.setAlignment(Qt.AlignRight)

@@ -27,6 +27,9 @@ def interleave(*iterables):
             yield item
 
 
+def concat_prf(prf):
+    return lambda x: prf + str(x)
+
 if __name__ == '__main__':
     for item, prime in take_adj(range(5)):
         print item, prime

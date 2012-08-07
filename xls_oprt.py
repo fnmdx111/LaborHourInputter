@@ -19,6 +19,12 @@ class ExcelOperator(object):
                 if id.isdigit() and name}
 
 
+    def write_back(self, worker_id, labor_hour_sum,
+                         waste_sum, assist_sum,
+                         worker_id_aux, labor_hour_sum_aux,
+                         ):
+        pass
+
 
 
 if __name__ == '__main__':
