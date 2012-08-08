@@ -12,18 +12,11 @@ class ExcelOperator(object):
         self.workbook = xlrd.open_workbook(xls_path)
 
 
-    def get_id_name_pairs(self):
-        _sheet = self.workbook.sheet_by_index(0)
+    def get_id_name_pairs(self, sheet_index):
+        _sheet = self.workbook.sheet_by_index(sheet_index)
         return {id: name for id, name in zip(_sheet.col_values(0),
                                              _sheet.col_values(1))
                 if id.isdigit() and name}
-
-
-    def write_back(self, worker_id, labor_hour_sum,
-                         waste_sum, assist_sum,
-                         worker_id_aux, labor_hour_sum_aux,
-                         ):
-        pass
 
 
 
@@ -32,7 +25,7 @@ if __name__ == '__main__':
         return s.encode('utf-8')
 
     xls_oprt = ExcelOperator(config.XLS_PATH)
-    for key, item in xls_oprt.get_id_name_pairs().iteritems():
+    for key, item in xls_oprt.get_id_name_pairs(1).iteritems():
         print _(key), _(item)
 
 

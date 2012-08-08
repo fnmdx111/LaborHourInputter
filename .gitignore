@@ -4,3 +4,5 @@
 .ropeproject
 *.db
 *.sqlite
+*.html
+*.htm

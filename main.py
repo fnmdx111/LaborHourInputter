@@ -6,8 +6,7 @@ from itertools import chain
 from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 import sys
-import datetime
-from misc import take, interleave, take_adj, concat_prf
+from misc import take, interleave, take_adj, concat_prf, get_today, get_month_day_num
 import config
 from sqlite_writer import SQLiteOperator
 from xls_oprt import ExcelOperator
@@ -67,11 +66,11 @@ class Form(QDialog, object):
 
         self.make_connections()
 
-        self.worker_dict = ExcelOperator(config.XLS_PATH).get_id_name_pairs()
+        self.worker_dict = ExcelOperator(config.XLS_PATH).get_id_name_pairs(0)
         self.set_tab_orders()
         self.le_worker_id.setFocus()
 
-        self.db_operator = SQLiteOperator(unicode(self.dt.day), self.worker_dict)
+        self.db_operator = SQLiteOperator(self.worker_dict, unicode(self.dt.day))
 
         self.validate_worker_id = lambda text: self._validate_text(text, u'请检查员工信息！')
         self.validate_day = lambda text: self._validate_text(text, u'请检查日期！')
@@ -167,7 +166,7 @@ class Form(QDialog, object):
     def query_last_worker_aux(self, worker_id, day):
         result = self.db_operator.retrieve(worker_id, day)
         if result:
-            result = result[0]['worker_id_aux']
+            result = result['worker_id_aux']
             if result:
                 return result
 
@@ -217,7 +216,7 @@ class Form(QDialog, object):
 
         results = self.db_operator.retrieve(worker_id, day)
         if results: # TODO decide whether labor_hour_aux_to should be added to labor hour sum.
-            results = results[0].items()
+            results = results.items()
 
             _, labor_hour_aux_to = results[-1]
 
@@ -383,14 +382,13 @@ class Form(QDialog, object):
 
 
     def set_time_attributes(self):
-        dt = datetime.date.today()
-        self.dt = dt
-        self.le_day.setText(unicode(dt.day))
+        self.dt = get_today()
+        self.le_day.setText(unicode(self.dt.day))
         self.le_day.last_content = self.le_day.text()
-        self.le_month.setText(unicode(dt.month))
+        self.le_month.setText(unicode(self.dt.month))
         self.le_month.last_content = self.le_month.text()
 
-        self.le_day.maximum = calendar.monthrange(dt.year, dt.month)[1]
+        self.le_day.maximum = get_month_day_num()
         self.le_month.maximum = 12
 
         self.connect(self.le_day, SIGNAL('textEdited(QString)'), self.restrict_content)

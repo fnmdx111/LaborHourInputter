@@ -21,22 +21,24 @@ class SQLiteOperator(object):
         'worker_id_aux', 'labor_hour_aux_to'
     )
 
-    def __init__(self, day, worker_dict):
-        self.engine = create_engine('sqlite:///this_month.db', echo=True)
+    def __init__(self, worker_dict=None, day=None):
+        self.engine = create_engine('sqlite:///%s' % config.db_path, echo=True)
         self.metadata = MetaData()
         self.metadata.reflect(bind=self.engine)
         self.connection = self.engine.connect()
-        self.create_table(day)
-        self.default_name = day
+        if day:
+            self.create_table(day)
+            self.default_name = day
 
-        try:
-            self.connection.execute(
-                self.table.insert().values(),
-                map(lambda x: {'worker_id': int(x)}, worker_dict.keys())
-            )
-        except exc.IntegrityError:
-            # viewing older table, pass
-            pass
+        if worker_dict:
+            try:
+                self.connection.execute(
+                    self.table.insert().values(),
+                    map(lambda x: {'worker_id': int(x)}, worker_dict.keys())
+                )
+            except exc.IntegrityError:
+                # viewing older table, pass
+                pass
 
 
     def create_table(self, name):
@@ -74,9 +76,13 @@ class SQLiteOperator(object):
 
     def retrieve(self, worker_id, day=None):
         table = self.create_table(day)
-        return self.connection.execute(table.select().
-                                             where(table.c.worker_id == worker_id)).\
-                               fetchall()
+        result =  self.connection.execute(
+            table.select().
+                  where(table.c.worker_id == worker_id)
+        ).fetchall()
+
+        if result:
+            return result[0]
 
 
     def __del__(self):
@@ -86,10 +92,10 @@ class SQLiteOperator(object):
 
 
 if __name__ == '__main__':
-    writer = SQLiteOperator('5', ExcelOperator(config.XLS_PATH).get_id_name_pairs())
+    writer = SQLiteOperator(ExcelOperator(config.XLS_PATH).get_id_name_pairs(0), '5')
 
     writer.write_back({
-        'worker_id': 5,
+        'worker_id': 2,
         'labor_hour_1': 100,
         'real_amount_1': 600,
         'waste_1': 20,
@@ -97,7 +103,7 @@ if __name__ == '__main__':
         'labor_hour_aux_to': 10
     })
 
-    for item in writer.retrieve(5):
+    for item in writer.retrieve(1, day='8'):
         print item
 
     # writer.insert({
