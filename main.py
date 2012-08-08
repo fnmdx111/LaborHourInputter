@@ -201,6 +201,8 @@ class Form(QDialog, object):
 
         self.clear_all_editable(except_=())
         self.le_worker_id.setFocus()
+        self.le_worker_id.setText(unicode(int(unicode(self.le_worker_id.text())) + 1))
+        self.update_worker_name(self.le_worker_id.text(), self.le_worker_name)
         self.le_worker_id.selectAll()
 
 
@@ -275,13 +277,13 @@ class Form(QDialog, object):
 
     def set_tab_orders(self):
         for prev, succ in take_adj(list(chain(
-                ['le_worker_id', 'le_worker_name'],
+                ['le_worker_id'], # , 'le_worker_name'],
                 interleave(Form._labor_hour_attrs,
                            Form._real_amount_attrs),
                 Form._waste_attrs,
                 Form._assist_attrs,
-                ['le_worker_id_aux', 'le_worker_name_aux',
-                 'le_labor_hour_aux'],
+                ['le_worker_id_aux'],#, 'le_worker_name_aux',
+                 # 'le_labor_hour_aux'],
                 map(concat_prf('btn_'), Form._btn_attributes)))):
             if succ:
                 prev_widget = self.__getattribute__(prev)

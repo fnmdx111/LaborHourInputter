@@ -49,16 +49,17 @@ class LaborHourDataProvider(object):
             sum *= 8
             sum = round(sum, 1)
 
-            return sum
+            return sum, result['labor_hour_aux_to']
 
-        return 0.0
+        return 0.0, 0
 
 
     def gen_worker_rows(self):
         for id, name in misc.sort_worker_dict(self.worker_dict):
             days_content, sum = [], 0
             for day in self.month_days:
-                day_sum = self.data_extractor(id, day)
+                day_sum, aux = self.data_extractor(id, day)
+                day_sum += aux if aux else 0
                 sum += day_sum
                 days_content.append(ViewWriter.day_cont % day_sum)
             days_content.append(ViewWriter.day_cont % sum)
