@@ -26,19 +26,25 @@ class SQLiteOperator(object):
         self.metadata = MetaData()
         self.metadata.reflect(bind=self.engine)
         self.connection = self.engine.connect()
+        self.worker_dict = worker_dict
         if day:
             self.create_table(day)
             self.default_name = day
 
-        if worker_dict:
-            try:
-                self.connection.execute(
-                    self.table.insert().values(),
-                    map(lambda x: {'worker_id': int(x)}, worker_dict.keys())
-                )
-            except exc.IntegrityError:
-                # viewing older table, pass
-                pass
+
+    def init_table(self, table):
+        if not self.worker_dict:
+            return
+
+        try:
+            self.connection.execute(
+                table.insert().values(),
+                map(lambda x: {'worker_id': int(x)}, self.worker_dict.keys())
+            )
+        except exc.IntegrityError:
+            # viewing older table, pass
+            pass
+
 
 
     def create_table(self, name):
@@ -46,6 +52,8 @@ class SQLiteOperator(object):
 
         if name in self.metadata.tables:
             self.table = self.metadata.tables[name]
+            self.init_table(self.table)
+
             return self.table
 
         self.table = Table(
@@ -56,6 +64,8 @@ class SQLiteOperator(object):
         )
 
         self.metadata.create_all(self.engine)
+
+        self.init_table(self.table)
 
         return self.table
 

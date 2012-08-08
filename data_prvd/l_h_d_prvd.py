@@ -61,8 +61,8 @@ class LaborHourDataProvider(object):
                 day_sum, aux = self.data_extractor(id, day)
                 day_sum += aux if aux else 0
                 sum += day_sum
-                days_content.append(ViewWriter.day_cont % day_sum)
-            days_content.append(ViewWriter.day_cont % sum)
+                days_content.append(ViewWriter.day_cont % (day_sum if day_sum else ''))
+            days_content.append(ViewWriter.day_cont % (sum if sum else ''))
 
             _ = {
                 'id': id.encode('utf-8'),

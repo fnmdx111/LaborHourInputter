@@ -45,8 +45,12 @@ class Form(QDialog, object):
     _editable_widget_attrs = list(interleave(_labor_hour_attrs, _real_amount_attrs)) +\
                              _waste_attrs + _assist_attrs + ['le_worker_id_aux']
 
-    def __init__(self, parent=None):
+    def __init__(self, app, parent=None):
         super(Form, self).__init__(parent)
+
+        self.current_focus = None
+        self.app = app
+        self.connect(self.app, SIGNAL('focusChanged(QWidget*, QWidget*)'), self.focus_changed)
 
         self.setWindowFlags(self.windowFlags() |
                             Qt.WindowMinMaxButtonsHint)
@@ -76,6 +80,10 @@ class Form(QDialog, object):
         self.validate_day = lambda text: self._validate_text(text, u'请检查日期！')
 
 
+    def focus_changed(self, old, now):
+        self.current_focus = now
+
+
     _sqlite_attrs = ['le_worker_id'] +\
                     list(interleave(_labor_hour_attrs,
                                     _real_amount_attrs)) +\
@@ -100,16 +108,24 @@ class Form(QDialog, object):
         return result
 
 
-
     def make_connections(self):
         self.connect(self.le_worker_id,
                      SIGNAL('textEdited(QString)'),
                      partial(self.update_worker_name,
                              which_one=self.le_worker_name))
+        # self.connect(self.le_worker_id,
+        #              SIGNAL('returnPressed()'),
+        #              self.go_to_next_tab)
         self.connect(self.le_worker_id_aux,
                      SIGNAL('textEdited(QString)'),
                      partial(self.update_worker_name,
                              which_one=self.le_worker_name_aux))
+        self.connect(self.le_worker_id_aux,
+                     SIGNAL('textEdited(QString)'),
+                     self.update_labor_hour_aux)
+        # self.connect(self.le_worker_id_aux,
+        #              SIGNAL('returnPressed()'),
+        #              self.go_to_next_tab)
         self.connect(self.le_worker_name,
                      SIGNAL('textEdited(QString)'),
                      partial(self.update_worker_id,
@@ -134,7 +150,12 @@ class Form(QDialog, object):
                      self.update_labor_hour_aux)
 
 
-    def update_labor_hour_aux(self, content):
+    def update_labor_hour_aux(self):
+        if not self.le_worker_id_aux.text():
+            self.le_labor_hour_aux.setText(u'')
+            return
+
+        content = self.le_labor_hour_sum.text()
         if content:
             content = float(content)
             if content < 8:
@@ -154,6 +175,23 @@ class Form(QDialog, object):
             return False
 
         return True
+
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Return:
+            if isinstance(self.current_focus, QPushButton):
+                event.accept()
+                self.btn_ok_clicked()
+                return
+            if any(map(self.current_focus.name.startswith,
+                       ['le_labor_hour', 'le_real_amount',
+                        'le_waste', 'le_assist', 'le_worker_id'])):
+                self.current_focus.tab_next.setFocus()
+                event.accept()
+            elif isinstance(self.current_focus, QPushButton):
+                event.accept()
+            else:
+                event.ignore()
 
 
     def clear_all_editable(self, except_=('le_worker_name',)):
@@ -217,7 +255,7 @@ class Form(QDialog, object):
             return
 
         results = self.db_operator.retrieve(worker_id, day)
-        if results: # TODO decide whether labor_hour_aux_to should be added to labor hour sum.
+        if results:
             results = results.items()
 
             _, labor_hour_aux_to = results[-1]
@@ -235,17 +273,29 @@ class Form(QDialog, object):
     def connect_lot(self, attrs, sum_widget):
         target_func = self.gen_update_sum_slot(attrs, sum_widget)
         for attr in attrs:
-            self.connect(self.__getattribute__(attr),
+            widget = self.__getattribute__(attr)
+            self.connect(widget,
                          SIGNAL('textChanged(QString)'),
                          target_func)
+            # self.connect(widget,
+            #              SIGNAL('returnPressed()'),
+            #              self.go_to_next_tab)
 
 
     def connect_group(self):
         for attrs in Form._hour_amount_pair:
             for attr in attrs:
-                self.connect(self.__getattribute__(attr),
+                widget = self.__getattribute__(attr)
+                self.connect(widget,
                              SIGNAL('textChanged(QString)'),
                              self.update_labor_hour_sum)
+                # self.connect(widget,
+                #              SIGNAL('returnPressed()'),
+                #              self.go_to_next_tab)
+
+
+    def go_to_next_tab(self):
+        self.sender().tab_next.setFocus()
 
 
     def update_labor_hour_sum(self):
@@ -275,19 +325,22 @@ class Form(QDialog, object):
         which_one.setText(text)
 
 
+    _tab_order = list(chain(
+                        ['le_worker_id'], # , 'le_worker_name'],
+                        interleave(_labor_hour_attrs,
+                                   _real_amount_attrs),
+                        _waste_attrs,
+                        _assist_attrs,
+                        ['le_worker_id_aux'],#, 'le_worker_name_aux',
+                        # 'le_labor_hour_aux'],
+                        map(concat_prf('btn_'), _btn_attributes)))
     def set_tab_orders(self):
-        for prev, succ in take_adj(list(chain(
-                ['le_worker_id'], # , 'le_worker_name'],
-                interleave(Form._labor_hour_attrs,
-                           Form._real_amount_attrs),
-                Form._waste_attrs,
-                Form._assist_attrs,
-                ['le_worker_id_aux'],#, 'le_worker_name_aux',
-                 # 'le_labor_hour_aux'],
-                map(concat_prf('btn_'), Form._btn_attributes)))):
+        for prev, succ in take_adj(Form._tab_order):
             if succ:
                 prev_widget = self.__getattribute__(prev)
                 succ_widget = self.__getattribute__(succ)
+                prev_widget.tab_next = succ_widget
+
                 prev_widget.setFocusPolicy(Qt.StrongFocus)
                 succ_widget.setFocusPolicy(Qt.StrongFocus)
                 self.setTabOrder(prev_widget,
@@ -296,6 +349,8 @@ class Form(QDialog, object):
 
         self.le_day.setFocusPolicy(Qt.StrongFocus ^ Qt.TabFocus)
         self.le_month.setFocusPolicy(Qt.StrongFocus ^ Qt.TabFocus)
+
+        self.le_real_amount_3.tab_next = self.le_waste_1
 
 
     def update_worker_name(self, worker_id, which_one):
@@ -339,6 +394,7 @@ class Form(QDialog, object):
             btn = QPushButton(label)
             btn.setFont(Form._font)
             btn.setFixedSize(150, 50)
+            btn.setAutoDefault(False)
 
             h_layout.addWidget(btn)
             h_layout.addStretch()
@@ -371,6 +427,7 @@ class Form(QDialog, object):
             for cnt, num in enumerate(nums):
                 def _(attr_prefix, col):
                     line_edit = self.produce_eligible_line_edit(True)
+                    line_edit.name = attr_prefix + str(num)
                     gl.addWidget(line_edit, cnt + 1, col)
                     self.__setattr__(attr_prefix + str(num), line_edit)
 
@@ -425,6 +482,7 @@ class Form(QDialog, object):
 
                 numeric_only = False if ('name' in attr) or ('sum' in attr) else True
                 line_edit = self.produce_eligible_line_edit(numeric_only)
+                line_edit.name = attr
 
                 gls[i].addWidget(line_edit, row, 1)
                 self.__setattr__(attr, line_edit)
@@ -457,6 +515,6 @@ class Form(QDialog, object):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    form = Form()
+    form = Form(app)
     form.show()
     app.exec_()
