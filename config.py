@@ -8,5 +8,6 @@ db_path = 'this_month.db'
 XLS_PATH = 'data.xls'
 max_pair_num = 9
 
+db_echo = False
 split_page_at = 43
 

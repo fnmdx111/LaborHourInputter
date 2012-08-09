@@ -72,7 +72,7 @@ class WasteDataProvider(object):
             days_content.append(ViewWriter.day_cont % (
                 ('%s%%' % round((waste_sum / labor_hour_sum) * 100, 1)) if (
                     labor_hour_sum
-                ) else ''
+                ) else '&nbsp;'
             ))
 
             _ = {

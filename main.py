@@ -148,6 +148,9 @@ class Form(QDialog, object):
         self.connect(self.le_labor_hour_sum,
                      SIGNAL('textChanged(QString)'),
                      self.update_labor_hour_aux)
+        self.connect(self.btn_fix,
+                     SIGNAL('clicked()'),
+                     partial(self.btn_ok_clicked, override=True))
 
 
     def update_labor_hour_aux(self):
@@ -215,12 +218,17 @@ class Form(QDialog, object):
         return False
 
 
-    def btn_ok_clicked(self):
+    def btn_ok_clicked(self, override=False):
         day = unicode(self.le_day.text())
         if not self.validate_day(day):
             return
 
         dumped = self.dump_all()
+        if not override:
+            if not self.db_operator.is_empty_row(dumped['worker_id'], day):
+                QMessageBox.critical(self, u'错误', u'修改请用改正按钮！', QMessageBox.Ok)
+                return
+
 
         # 先清除上个辅助工人的工时
         last_worker_id_aux = self.query_last_worker_aux(dumped['worker_id'],
@@ -243,9 +251,7 @@ class Form(QDialog, object):
 
         self.clear_all_editable(except_=())
         self.le_worker_id.setFocus()
-        self.le_worker_id.setText(unicode(int(unicode(self.le_worker_id.text())) + 1))
-        self.update_worker_name(self.le_worker_id.text(), self.le_worker_name)
-        self.le_worker_id.selectAll()
+        self.le_worker_id.setText(u'')
 
 
     def btn_find_clicked(self):

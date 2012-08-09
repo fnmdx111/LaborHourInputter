@@ -22,7 +22,7 @@ class SQLiteOperator(object):
     )
 
     def __init__(self, worker_dict=None, day=None):
-        self.engine = create_engine('sqlite:///%s' % config.db_path, echo=True)
+        self.engine = create_engine('sqlite:///%s' % config.db_path, echo=config.db_echo)
         self.metadata = MetaData()
         self.metadata.reflect(bind=self.engine)
         self.connection = self.engine.connect()
@@ -95,6 +95,14 @@ class SQLiteOperator(object):
             return result[0]
 
 
+    def is_empty_row(self, worker_id, day=None):
+        row = self.retrieve(worker_id, day)
+        if not row:
+            return True
+
+        return not any(map(row.__getitem__, SQLiteOperator._db_keys[:-1]))
+
+
     def __del__(self):
         self.connection.close()
 
@@ -115,6 +123,9 @@ if __name__ == '__main__':
 
     for item in writer.retrieve(1, day='8'):
         print item
+
+    print writer.is_empty_row(1, '8')
+    print writer.is_empty_row(111, '8')
 
     # writer.insert({
     #     'worker_id': 5,
