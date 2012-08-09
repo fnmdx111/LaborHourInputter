@@ -80,7 +80,7 @@ class Form(QDialog, object):
         self.validate_day = lambda text: self._validate_text(text, u'请检查日期！')
 
 
-    def focus_changed(self, old, now):
+    def focus_changed(self, _, now):
         self.current_focus = now
 
 
@@ -178,7 +178,11 @@ class Form(QDialog, object):
 
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Return:
+        if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
+            if event.modifiers() == Qt.ControlModifier:
+                event.accept()
+                self.btn_ok_clicked()
+                return
             if isinstance(self.current_focus, QPushButton):
                 event.accept()
                 self.btn_ok_clicked()
