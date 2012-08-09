@@ -353,6 +353,8 @@ class Form(QDialog, object):
 
         self.le_day.setFocusPolicy(Qt.StrongFocus ^ Qt.TabFocus)
         self.le_month.setFocusPolicy(Qt.StrongFocus ^ Qt.TabFocus)
+        self.le_worker_name.setFocusPolicy(Qt.StrongFocus ^ Qt.TabFocus)
+        self.le_worker_name_aux.setFocusPolicy(Qt.StrongFocus ^ Qt.TabFocus)
 
         self.le_real_amount_3.tab_next = self.le_waste_1
 
