@@ -225,7 +225,7 @@ class Form(QDialog, object):
 
         dumped = self.dump_all()
         if not override:
-            if not self.db_operator.is_empty_row(dumped['worker_id'], day):
+            if not self.db_operator.is_empty_row(worker_id=dumped['worker_id'], day=day):
                 QMessageBox.critical(self, u'错误', u'修改请用改正按钮！', QMessageBox.Ok)
                 return
 

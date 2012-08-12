@@ -63,13 +63,14 @@ def get_month_days(dt=get_today()):
 
 
 def get_month_day_num(dt=get_today()):
+    dt = get_today() if not dt else dt
     d1, d2 = _get_dates(dt)
     delta = d1 - d2
 
     return delta.days + 1
 
 
-def sort_worker_dict(d):
+def sort_dict_keys_numerically(d):
     return sorted(d.iteritems(),
                   cmp=lambda x, y: cmp(int(x[0]), int(y[0])))
 

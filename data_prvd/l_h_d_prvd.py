@@ -1,7 +1,7 @@
 # encoding: utf-8
 import config
+from data_prvd.abstract_prvd import AbstractDataProvider
 import misc
-from sqlite_writer import SQLiteOperator
 from view_writer import ViewWriter
 from xls_oprt import ExcelOperator
 
@@ -15,71 +15,60 @@ TITLE_INDEX_PAIRS = (
 )
 
 
+class LaborHourDataProvider(AbstractDataProvider, object):
 
-class LaborHourDataProvider(object):
-
-    table_headers = '''<th rowspan="2" class="num">序号</th>
-        <th rowspan="2" class="name">姓名</th>
-        <th colspan="{date_colspan}" class="day">日期</th>
-        <th rowspan="2" class="month">月合计</th>
-    '''.format(**{'date_colspan': misc.get_month_day_num()})
+    table_headers_1 = '''<th colspan="%s">日期</th>
+    <th rowspan="2" class="day">月合计</th>'''
 
     def __init__(self, table_title, worker_dict):
-        self.table_title = table_title
-        self.worker_dict = worker_dict
-        self.table_headers = LaborHourDataProvider.table_headers
-        self.db_operator = SQLiteOperator()
-        self.misc_colspan = 1
-        self.month_days = misc.get_month_days()
+        super(LaborHourDataProvider, self).__init__(table_title, worker_dict)
 
+        month_days = self.db_operator.get_month_days_in_db()
+        self.date_colspan = len(month_days)
+        self.sums_colspan = 1
+        self.title_colspan = 2 + self.date_colspan + self.sums_colspan
 
-    def data_extractor(self, worker_id, day):
-        result = self.db_operator.retrieve(worker_id, unicode(day))
-        if result:
-            sum = 0
-            for lh_key, ra_key in misc.take(SQLiteOperator._db_keys[:18],
-                by=2):
-                labor_hour, real_amount = map(result.__getitem__,
-                    (lh_key, ra_key))
-
-                if labor_hour and real_amount:
-                    labor_hour, real_amount = map(float,
-                        (labor_hour, real_amount))
-                    sum += (real_amount / labor_hour)
-            sum *= 8
-            sum = round(sum, 1)
-
-            return sum, result['labor_hour_aux_to']
-
-        return 0.0, 0
+        self.table_headers = AbstractDataProvider.table_headers.format(
+            details_1=LaborHourDataProvider.table_headers_1 % self.date_colspan,
+            details_2='\n'.join(map('<th>%s</th>'.__mod__, month_days))
+        )
 
 
     def gen_worker_rows(self):
-        for id, name in misc.sort_worker_dict(self.worker_dict):
-            days_content, sum = [], 0
-            for day in self.month_days:
-                day_sum, aux = self.data_extractor(id, day)
-                day_sum += aux if aux else 0
-                sum += day_sum
-                days_content.append(ViewWriter.day_cont % (day_sum if day_sum else '&nbsp;'))
-            days_content.append(ViewWriter.day_cont % (sum if sum else '&nbsp;'))
+        for id, name in self.worker_dict:
+            days_contents, sum = [], 0
+            for _, day_sum, aux, _ in self.db_operator.iterate_worker(id):
+                sum += day_sum + aux
+                days_contents.append(AbstractDataProvider.day_cont % (day_sum if day_sum else '&nbsp;'))
+            days_contents.append(AbstractDataProvider.day_cont % (sum if sum else '&nbsp;'))
 
-            _ = {
-                'id': id.encode('utf-8'),
-                'name': name.encode('utf-8'),
-                'days_content': '\n'.join(days_content)
-            }
+            yield AbstractDataProvider.each_row.format(
+                id=id.encode('utf-8'),
+                name=name.encode('utf-8'),
+                details='\n'.join(days_contents)
+            )
 
-            yield ViewWriter.each_row.format(**_)
+
+    def gen_table_cont(self):
+        return AbstractDataProvider.table_cont.format(
+            date_colspan=self.date_colspan,
+            sums_colspan=self.sums_colspan,
+            title_colspan=self.title_colspan,
+            table_title=self.table_title,
+            table_headers=self.table_headers,
+            table_rows_contents='\n'.join(self.gen_worker_rows())
+        )
+
+
+    def __str__(self):
+        return self.gen_table_cont()
 
 
 
 if __name__ == '__main__':
+    config.db_path = '..\\this_month.db'
     for title, index in TITLE_INDEX_PAIRS:
-        worker_dict = misc.sort_worker_dict(
-            ExcelOperator(config.XLS_PATH).\
-                get_id_name_pairs(index)
-        )
+        worker_dict = ExcelOperator('..\\data.xls').get_id_name_pairs(index)
 
         for num, d in enumerate(misc.take(worker_dict, by=43)):
             view = ViewWriter(LaborHourDataProvider(title, dict(d)))

@@ -1,6 +1,7 @@
 from sqlalchemy import *
 from sqlalchemy import exc
 import config
+import misc
 from xls_oprt import ExcelOperator
 
 
@@ -36,15 +37,15 @@ class SQLiteOperator(object):
         if not self.worker_dict:
             return
 
-        try:
-            self.connection.execute(
-                table.insert().values(),
-                map(lambda x: {'worker_id': int(x)}, self.worker_dict.keys())
-            )
-        except exc.IntegrityError:
-            # viewing older table, pass
-            pass
-
+        for worker_id in self.worker_dict:
+            try:
+                self.connection.execute(
+                    table.insert().values(),
+                    {'worker_id': int(worker_id)}
+                )
+            except exc.IntegrityError:
+                # already have that row, moving on
+                pass
 
 
     def create_table(self, name):
@@ -52,18 +53,15 @@ class SQLiteOperator(object):
 
         if name in self.metadata.tables:
             self.table = self.metadata.tables[name]
-            self.init_table(self.table)
+        else:
+            self.table = Table(
+                name, self.metadata,
+                Column('worker_id', Integer, primary_key=True),
+                *map(lambda key: Column(key, Integer, nullable=True),
+                     SQLiteOperator._db_keys)
+            )
 
-            return self.table
-
-        self.table = Table(
-            name, self.metadata,
-            Column('worker_id', Integer, primary_key=True),
-            *map(lambda key: Column(key, Integer, nullable=True),
-                 SQLiteOperator._db_keys)
-        )
-
-        self.metadata.create_all(self.engine)
+            self.metadata.create_all(self.engine)
 
         self.init_table(self.table)
 
@@ -95,12 +93,49 @@ class SQLiteOperator(object):
             return result[0]
 
 
-    def is_empty_row(self, worker_id, day=None):
-        row = self.retrieve(worker_id, day)
+    def is_empty_row(self, worker_id=None, row=None, day=None):
+        row = self.retrieve(worker_id, day) if not row else row
         if not row:
             return True
 
         return not any(map(row.__getitem__, SQLiteOperator._db_keys[:-1]))
+
+
+    def get_month_days_in_db(self):
+        l = map(lambda item: item[0], misc.sort_dict_keys_numerically(self.metadata.tables))
+        l = l[27:] + l[:27]
+
+        return l
+
+
+    def get_data_per_day(self, worker_id, day):
+        result = self.retrieve(worker_id, unicode(day))
+        if self.is_empty_row(row=result):
+            lh_sum, waste_sum = 0, 0
+
+            for lh_key, ra_key in misc.take(SQLiteOperator._db_keys[:18], by=2):
+                labor_hour, real_amount = map(result.__getitem__, (lh_key, ra_key))
+                if labor_hour and real_amount:
+                    labor_hour, real_amount = map(float, (labor_hour, real_amount))
+                    if labor_hour:
+                        lh_sum += real_amount / labor_hour
+            lh_sum = round(lh_sum * 8, 1)
+
+            for key in SQLiteOperator._db_keys[18:21]:
+                waste = result[key]
+                waste_sum += waste if waste else 0
+
+            labor_hour_aux_to = result['labor_hour_aux_to']
+            labor_hour_aux_to = labor_hour_aux_to if labor_hour_aux_to else 0
+
+            return True, lh_sum, labor_hour_aux_to, waste_sum
+
+        return False, .0, 0, 0
+
+
+    def iterate_worker(self, worker_id):
+        for day in self.get_month_days_in_db():
+            yield self.get_data_per_day(worker_id, day)
 
 
     def __del__(self):
@@ -121,11 +156,11 @@ if __name__ == '__main__':
         'labor_hour_aux_to': 10
     })
 
-    for item in writer.retrieve(1, day='8'):
+    for item in writer.retrieve(1, day='9'):
         print item
 
-    print writer.is_empty_row(1, '8')
-    print writer.is_empty_row(111, '8')
+    print writer.is_empty_row(worker_id=1, day='8')
+    print writer.is_empty_row(worker_id=111, day='8')
 
     # writer.insert({
     #     'worker_id': 5,

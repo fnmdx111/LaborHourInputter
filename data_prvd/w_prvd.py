@@ -3,6 +3,11 @@ import misc
 from sqlite_writer import SQLiteOperator
 from view_writer import ViewWriter
 
+# --- Warning ---------------------------------
+# This module is DEPRECATED and NOT supported,
+# but is preserved for future reference
+# ---------------------------------------------
+
 TITLE_INDEX_PAIRS = (
     ('分厂员工废品明细', 6),
 )
@@ -60,7 +65,7 @@ class WasteDataProvider(object):
 
 
     def gen_worker_rows(self):
-        for id, name in misc.sort_worker_dict(self.worker_dict):
+        for id, name in misc.sort_dict_keys_numerically(self.worker_dict):
             days_content, labor_hour_sum, waste_sum = [], 0.0, 0
             for day in self.month_days:
                 lb_sum, day_waste = self.data_extractor(id, day)

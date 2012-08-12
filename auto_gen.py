@@ -6,7 +6,7 @@ from xls_oprt import ExcelOperator
 
 def auto_gen(title_index_pairs, data_prvd_class, max=config.split_page_at):
     for title, index in title_index_pairs:
-        worker_tuples = misc.sort_worker_dict(
+        worker_tuples = misc.sort_dict_keys_numerically(
             ExcelOperator(config.XLS_PATH).\
             get_id_name_pairs(index)
         )
