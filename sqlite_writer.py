@@ -1,9 +1,12 @@
+import datetime
 from sqlalchemy import *
 from sqlalchemy import exc
 import config
 import misc
 from xls_oprt import ExcelOperator
 
+DEBUG = True
+days = misc.get_month_days(datetime.datetime(2012, 10, 3))
 
 class SQLiteOperator(object):
 
@@ -31,6 +34,18 @@ class SQLiteOperator(object):
         if day:
             self.create_table(day)
             self.default_name = day
+
+        if DEBUG:
+            for day in days:
+                self.table = Table(
+                    unicode(day), self.metadata,
+                    Column('worker_id', Integer, primary_key=True),
+                    *map(lambda key: Column(key, Integer, nullable=True),
+                         SQLiteOperator._db_keys),
+                    extend_existing=True
+                )
+                self.metadata.create_all(self.engine)
+                self.init_table(self.table)
 
 
     def init_table(self, table):
@@ -61,7 +76,11 @@ class SQLiteOperator(object):
                      SQLiteOperator._db_keys)
             )
 
-            self.metadata.create_all(self.engine)
+            if not DEBUG:
+                self.metadata.create_all(self.engine)
+
+        if DEBUG:
+            return self.table
 
         self.init_table(self.table)
 
@@ -110,7 +129,7 @@ class SQLiteOperator(object):
 
     def get_data_per_day(self, worker_id, day):
         result = self.retrieve(worker_id, unicode(day))
-        if self.is_empty_row(row=result):
+        if not self.is_empty_row(row=result):
             lh_sum, waste_sum = 0, 0
 
             for lh_key, ra_key in misc.take(SQLiteOperator._db_keys[:18], by=2):
@@ -128,9 +147,9 @@ class SQLiteOperator(object):
             labor_hour_aux_to = result['labor_hour_aux_to']
             labor_hour_aux_to = labor_hour_aux_to if labor_hour_aux_to else 0
 
-            return True, lh_sum, labor_hour_aux_to, waste_sum
+            return lh_sum, labor_hour_aux_to, waste_sum
 
-        return False, .0, 0, 0
+        return .0, 0, 0
 
 
     def iterate_worker(self, worker_id):

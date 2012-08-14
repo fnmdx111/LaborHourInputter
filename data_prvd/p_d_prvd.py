@@ -109,15 +109,14 @@ class PerformanceDataProvider(AbstractDataProvider, object):
             )
 
         for worker_id, name in misc.sort_dict_keys_numerically(self.worker_dict): # 第一轮for，收集数据，以便计算废品绩效
-            att_sum, lh_sum, waste_sum = 0, 0, 0
-            for attended, labor_hour, labor_hour_aux, waste in self.db_operator.iterate_worker(worker_id):
-                att_sum += 1 if attended else 0
+            lh_sum, waste_sum = 0, 0
+            for labor_hour, labor_hour_aux, waste in self.db_operator.iterate_worker(worker_id):
                 lh_sum += labor_hour + labor_hour_aux
                 waste_sum += waste
 
-            self.worker_data[worker_id] = WorkerData(lh_sum, waste_sum, att_sum, self.attendance_dict[worker_id][0]), name
-
-            # TODO consider whether assert att_sum equals att_dict[id][1]
+            self.worker_data[worker_id] = WorkerData(lh_sum, waste_sum,
+                                                     self.attendance_dict[worker_id][1],
+                                                     self.attendance_dict[worker_id][0]), name
 
         lowest_ratio = min(map(lambda (item, _): item.ratio_waste, self.worker_data.values()))
         for worker_data in map(lambda (item, _): item, self.worker_data.values()):

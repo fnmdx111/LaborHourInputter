@@ -245,6 +245,8 @@ class Form(QDialog, object):
         worker_aux = unicode(self.le_worker_id_aux.text())
         if worker_aux:
             worker_aux = int(worker_aux)
+            self.update_labor_hour_sum()
+            self.update_labor_hour_aux()
             labor_hour_aux = int(self.le_labor_hour_aux.text())
 
             self.db_operator.write_back_single(worker_aux, labor_hour_aux, day)

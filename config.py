@@ -11,3 +11,13 @@ max_pair_num = 9
 db_echo = False
 split_page_at = 43
 
+
+title_index_pairs = (
+    ('单多轴车间', 1),
+    ('零件车间', 2),
+    ('装配车间', 3),
+    ('备料组', 4),
+    ('清包车间', 5)
+)
+
+

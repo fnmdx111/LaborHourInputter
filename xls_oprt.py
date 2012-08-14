@@ -34,6 +34,11 @@ class ExcelOperator(object):
         return misc.sort_dict_keys_numerically(d)
 
 
+    def get_work_performance(self):
+        # TODO all perf scores must be put in one sheet
+        _sheet = self.workbook.sheet_by_index()
+
+
 
 
 if __name__ == '__main__':

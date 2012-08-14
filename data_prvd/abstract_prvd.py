@@ -1,9 +1,9 @@
 # encoding: utf-8
-import abc
+from abc import ABCMeta, abstractmethod
 from sqlite_writer import SQLiteOperator
 
 class AbstractDataProvider(object):
-    __metaclass__ = abc.ABCMeta
+    __metaclass__ = ABCMeta
 
     table_headers = '''<tr>
     <th rowspan="2" class="num">序号</th>
@@ -42,7 +42,7 @@ class AbstractDataProvider(object):
         self.db_operator = SQLiteOperator()
 
 
-    @abc.abstractmethod
+    @abstractmethod
     def gen_worker_rows(self):
         pass
 
