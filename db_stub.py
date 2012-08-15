@@ -16,11 +16,11 @@ def gen_worker_data():
             r.append('')
             continue
 
-        labor = randint(300, 10000)
+        labor = randint(300, 2000)
         if randint(1, 10) > 8:
             real = randint(300, labor)
         else:
-            real = randint(labor, 12000)
+            real = randint(labor, 6000)
         r.append(labor)
         r.append(real)
 

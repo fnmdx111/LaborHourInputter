@@ -1,5 +1,4 @@
 # encoding: utf-8
-
 import config
 import xlrd
 import misc
@@ -22,22 +21,33 @@ class ExcelOperator(object):
 
 
     def get_attended_days_count_pairs(self):
-        _sheet = self.workbook.sheet_by_index(12)
+        id_name_dict = misc.invert_dict(dict(self.get_id_name_pairs(0)))
+
+        _sheet = self.workbook.sheet_by_index(config.attendance_sheet_index)
         d = {}
+
         _ = lambda x: int(x) if not isinstance(x, basestring) else 0
-        for id, attendance, attended in zip(_sheet.col_values(0),
-                                            _sheet.col_values(3),
-                                            _sheet.col_values(9)):
-            if not isinstance(id, basestring):
-                d[unicode(int(id))] = _(attendance), _(attended)
+        for name, attendance, attended in zip(_sheet.col_values(2),
+                                              _sheet.col_values(3),
+                                              _sheet.col_values(9)):
+            if isinstance(name, basestring):
+                if name in id_name_dict:
+                    d[id_name_dict[name]] = _(attendance), _(attended)
 
         return misc.sort_dict_keys_numerically(d)
 
 
     def get_work_performance(self):
         # TODO all perf scores must be put in one sheet
-        _sheet = self.workbook.sheet_by_index()
+        _sheet = self.workbook.sheet_by_index(config.performance_sheet_index)
+        d = {}
+        _ = lambda x: int(x) if isinstance(x, basestring) and x.isdigit() else 0
+        for id, performance in zip(_sheet.col_values(0),
+                                   _sheet.col_values(11)):
+            if isinstance(id, basestring) and id.isdigit():
+                d[unicode(int(id))] = int(performance)
 
+        return misc.sort_dict_keys_numerically(d)
 
 
 
@@ -46,10 +56,13 @@ if __name__ == '__main__':
         return s.encode('utf-8')
 
     xls_oprt = ExcelOperator(config.XLS_PATH)
-    for key, item in xls_oprt.get_id_name_pairs(1).iteritems():
+    for key, item in xls_oprt.get_id_name_pairs(1):
         print _(key), _(item)
 
-    for key, item in xls_oprt.get_attended_days_count_pairs().iteritems():
+    for key, item in xls_oprt.get_attended_days_count_pairs():
+        print _(key), item
+
+    for key, item in xls_oprt.get_work_performance():
         print _(key), item
 
 

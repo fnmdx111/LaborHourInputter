@@ -75,10 +75,15 @@ def sort_dict_keys_numerically(d):
                   cmp=lambda x, y: cmp(int(x[0]), int(y[0])))
 
 
+def invert_dict(d):
+    return dict(map(lambda (key, value): (value, key), d.iteritems()))
+
+
 
 if __name__ == '__main__':
     print get_month_day_num()
     print get_month_days()
+    print invert_dict({1: 'a', 2: 'b', 3: 'c'})
 
 
 

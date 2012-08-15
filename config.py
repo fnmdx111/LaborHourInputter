@@ -2,6 +2,7 @@
 
 # 对于未填的项目强制清除
 FORCE_OVERRIDE = True
+SKIP_NOT_FOUND_ATTENDANCE = False
 DEFAULT_TEXT = u''
 
 db_path = 'this_month.db'
@@ -20,4 +21,6 @@ title_index_pairs = (
     ('清包车间', 5)
 )
 
+attendance_sheet_index = 12
+performance_sheet_index = 7
 
