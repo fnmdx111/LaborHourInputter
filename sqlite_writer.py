@@ -26,6 +26,8 @@ class SQLiteOperator(object):
     )
 
     def __init__(self, worker_dict=None, day=None):
+        """note: day and worker_dict is only needed when you want to initialize the entire database,
+        that is to say, a read-only SQLiteOperator need no parameter to initialize with."""
         self.engine = create_engine('sqlite:///%s' % config.db_path, echo=config.db_echo)
         self.metadata = MetaData()
         self.metadata.reflect(bind=self.engine)

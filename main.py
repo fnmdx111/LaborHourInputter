@@ -70,7 +70,7 @@ class Form(QDialog, object):
 
         self.make_connections()
 
-        self.worker_dict = ExcelOperator(config.XLS_PATH).get_id_name_pairs(0)
+        self.worker_dict = dict(ExcelOperator(config.XLS_PATH).get_id_name_pairs(0))
         self.set_tab_orders()
         self.le_worker_id.setFocus()
 
@@ -113,9 +113,6 @@ class Form(QDialog, object):
                      SIGNAL('textEdited(QString)'),
                      partial(self.update_worker_name,
                              which_one=self.le_worker_name))
-        # self.connect(self.le_worker_id,
-        #              SIGNAL('returnPressed()'),
-        #              self.go_to_next_tab)
         self.connect(self.le_worker_id_aux,
                      SIGNAL('textEdited(QString)'),
                      partial(self.update_worker_name,
@@ -123,9 +120,6 @@ class Form(QDialog, object):
         self.connect(self.le_worker_id_aux,
                      SIGNAL('textEdited(QString)'),
                      self.update_labor_hour_aux)
-        # self.connect(self.le_worker_id_aux,
-        #              SIGNAL('returnPressed()'),
-        #              self.go_to_next_tab)
         self.connect(self.le_worker_name,
                      SIGNAL('textEdited(QString)'),
                      partial(self.update_worker_id,

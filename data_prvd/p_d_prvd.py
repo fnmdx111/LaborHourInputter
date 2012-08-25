@@ -196,10 +196,10 @@ if __name__ == '__main__':
         worker_dict = xls_obj.get_id_name_pairs(index)
 
         for num, d in enumerate(misc.take(worker_dict, by=43)):
-            view = ViewWriter(PerformanceDataProvider(title, dict(xls_obj.get_id_name_pairs(0)),
+            view = ViewWriter(PerformanceDataProvider(title, dict(worker_dict),
                                                              dict(worker_dict),
                                                              dict(xls_obj.get_attended_days_count_pairs()),
-                                                             dict(xls_obj.get_work_performance())))
+                                                             dict(xls_obj.get_work_performance(10 + index))))
 
             with open('%s%s.html' % (num, title.decode('utf-8')), 'w') as f:
                 print >> f, view

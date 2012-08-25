@@ -37,17 +37,25 @@ class ExcelOperator(object):
         return misc.sort_dict_keys_numerically(d)
 
 
-    def get_work_performance(self):
+    def get_work_performance(self, sheet_index):
         # TODO all perf scores must be put in one sheet
-        _sheet = self.workbook.sheet_by_index(config.performance_sheet_index)
+        _sheet = self.workbook.sheet_by_index(sheet_index)
         d = {}
         _ = lambda x: int(x) if isinstance(x, basestring) and x.isdigit() else 0
         for id, performance in zip(_sheet.col_values(0),
                                    _sheet.col_values(11)):
             if isinstance(id, basestring) and id.isdigit():
-                d[unicode(int(id))] = int(performance)
+                d[unicode(int(id))] = int(performance) if performance else 0
 
         return misc.sort_dict_keys_numerically(d)
+
+
+    def get_id_name_pairs_with_row_number(self, sheet_index):
+        _sheet = self.workbook.sheet_by_index(sheet_index)
+        return misc.sort_dict_keys_numerically(
+            {id: (name, row + 1) for row, (id, name) in enumerate(zip(_sheet.col_values(0),
+                                                                  _sheet.col_values(1)))
+             if id.isdigit() and name})
 
 
 
@@ -62,7 +70,6 @@ if __name__ == '__main__':
     for key, item in xls_oprt.get_attended_days_count_pairs():
         print _(key), item
 
-    for key, item in xls_oprt.get_work_performance():
-        print _(key), item
-
+    for key, (item, row) in xls_oprt.get_id_name_pairs_with_row_number(1):
+        print _(key), _(item), row
 

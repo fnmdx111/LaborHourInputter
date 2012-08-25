@@ -1,8 +1,6 @@
-from abc import ABCMeta
 from data_prvd.abstract_prvd import AbstractDataProvider
 
 class DateRelatedDataProvider(AbstractDataProvider, object):
-    __metaclass__ = ABCMeta
 
     def __init__(self,
                  table_title,

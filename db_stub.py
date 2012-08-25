@@ -16,11 +16,11 @@ def gen_worker_data():
             r.append('')
             continue
 
-        labor = randint(300, 2000)
+        labor = randint(300, 1500)
         if randint(1, 10) > 8:
             real = randint(300, labor)
         else:
-            real = randint(labor, 6000)
+            real = randint(labor, 2700)
         r.append(labor)
         r.append(real)
 
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     workers = ExcelOperator(config.XLS_PATH).get_id_name_pairs(0)
 
     for day in month_days:
-        for worker_id in workers:
+        for worker_id in dict(workers):
             r = gen_worker_data()
             m = [unicode(day), unicode(what_month.month), worker_id]
             print m, r
@@ -80,7 +80,7 @@ if __name__ == '__main__':
             for attr, data in zip(attrs, gen_worker_data()):
                 form.__getattribute__(attr).setText(unicode(data))
 
-            form.btn_ok_clicked()
+            form.btn_ok_clicked(override=True)
 
 
 
