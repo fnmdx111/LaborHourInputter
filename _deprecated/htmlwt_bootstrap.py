@@ -1,6 +1,6 @@
 # encoding: utf-8
-from data_prvd.l_h_d_prvd import LaborHourDataProvider
-from data_prvd.w_prvd import WasteDataProvider
+from _deprecated.l_h_d_prvd import LaborHourDataProvider
+from _deprecated.w_prvd import WasteDataProvider
 from libs import misc, config
 from libs.view_writer import ViewWriter
 from libs.xls_oprt import ExcelOperator
