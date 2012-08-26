@@ -1,6 +1,6 @@
 # encoding: utf-8
 import os
-import config
+from libs import config
 from xlwriter.l_h_d_wrt import LaborHourDataXLWriter
 
 

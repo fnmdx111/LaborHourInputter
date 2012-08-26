@@ -1,7 +1,6 @@
 # encoding: utf-8
-import config
 import xlrd
-import misc
+from libs import misc, config
 
 
 class ExcelOperator(object):

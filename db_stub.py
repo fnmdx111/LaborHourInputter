@@ -3,10 +3,9 @@ from random import randint
 from PyQt4.QtGui import QApplication
 import sys
 import datetime
-import config
+from libs import misc, config
 from main import Form
-import misc
-from xls_oprt import ExcelOperator
+from libs.xls_oprt import ExcelOperator
 
 def gen_worker_data():
     r = []

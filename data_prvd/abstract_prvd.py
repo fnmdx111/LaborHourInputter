@@ -1,6 +1,6 @@
 # encoding: utf-8
 from abc import ABCMeta, abstractmethod
-from sqlite_writer import SQLiteOperator
+from libs.sqlite_writer import SQLiteOperator
 
 class AbstractDataProvider(object):
     __metaclass__ = ABCMeta

@@ -1,10 +1,9 @@
 # encoding: utf-8
-import config
 from data_prvd.l_h_d_prvd import LaborHourDataProvider
 from data_prvd.w_prvd import WasteDataProvider
-import misc
-from view_writer import ViewWriter
-from xls_oprt import ExcelOperator
+from libs import misc, config
+from libs.view_writer import ViewWriter
+from libs.xls_oprt import ExcelOperator
 
 def auto_gen(provider_class):
     for title, index in config.title_index_pairs:

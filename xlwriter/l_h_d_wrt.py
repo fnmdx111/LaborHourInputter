@@ -1,9 +1,8 @@
 # encoding: utf-8
 from win32com.client import Dispatch
-import config
-import misc
-from sqlite_writer import SQLiteOperator
-from xls_oprt import ExcelOperator
+from libs import misc, config
+from libs.sqlite_writer import SQLiteOperator
+from libs.xls_oprt import ExcelOperator
 
 
 class LaborHourDataXLWriter(object):
@@ -14,6 +13,7 @@ class LaborHourDataXLWriter(object):
 
     INSERT_LH = 0x1
     INSERT_W = 0x2
+    INSERT_A = 0x3
 
     def __init__(self, sheet_index, base_name, xl_out_path, app_echo=True, save_per_worker=False):
         self.base_name = base_name
@@ -36,40 +36,45 @@ class LaborHourDataXLWriter(object):
         self.save_per_worker = save_per_worker
 
 
+    def _echo_sheet(self, sheet, worker_row):
+        sheet.Select()
+        sheet.Range('A%s' % worker_row).Select()
+
+
     def write_data_per_worker(self,
                               worker_id,
                               worker_row,
                               modes=(INSERT_LH,
-                                     INSERT_W)):
+                                     INSERT_W,
+                                     INSERT_A)):
         lh_offset = LaborHourDataXLWriter.LH_OFFSET # name is too long, need alias
         w_offset = LaborHourDataXLWriter.WASTE_OFFSET # name is too long, need alias
 
         cache = list(enumerate(self.db_operator.iterate_worker(worker_id)))
 
         _ = lambda offset: (worker_row, offset + col_cnt)
-        assist_sum = 0
-        if self.app_echo:
-            self.lh_sheet.Select()
-            # self.lh_sheet.Cells(worker_row, 0).Select()
-        for col_cnt, (day_sum, aux, __, __) in cache:
-            if LaborHourDataXLWriter.INSERT_LH in modes:
+        if LaborHourDataXLWriter.INSERT_LH in modes:
+            if self.app_echo:
+                self._echo_sheet(self.lh_sheet, worker_row)
+            for col_cnt, (day_sum, aux, __, __) in cache:
                 s = day_sum + aux
                 self.lh_sheet.Cells(*_(lh_offset)).Value = s if s else ''
 
-        if self.app_echo:
-            self.w_sheet.Select()
-            # self.w_sheet.Cells(worker_row, 0).Select()
-        for col_cnt, (__, __, day_waste, day_assist) in cache:
-            if LaborHourDataXLWriter.INSERT_W in modes:
-                self.w_sheet.Select()
+        if LaborHourDataXLWriter.INSERT_W in modes:
+            if self.app_echo:
+                self._echo_sheet(self.w_sheet, worker_row)
+            for col_cnt, (__, __, day_waste, __) in cache:
                 self.w_sheet.Cells(*_(w_offset)).Value = int(day_waste) if day_waste else ''
 
-            assist_sum += day_assist
+        if LaborHourDataXLWriter.INSERT_A in modes:
+            assist_sum = 0
+            for __, (__, __, __, day_assist) in cache:
+                assist_sum += day_assist
+            if self.app_echo:
+                self._echo_sheet(self.m_sheet, worker_row)
+            self.m_sheet.Cells(self.main_worker_dict_x[worker_id][1],
+                               LaborHourDataXLWriter.ASSIST_COL).Value = assist_sum if assist_sum else ''
 
-        if self.app_echo:
-            self.m_sheet.Select()
-        self.m_sheet.Cells(self.main_worker_dict_x[worker_id][1],
-                           LaborHourDataXLWriter.ASSIST_COL).Value = assist_sum if assist_sum else ''
 
         if self.save_per_worker:
             self.xl_app.ActiveWorkbook.Save()
