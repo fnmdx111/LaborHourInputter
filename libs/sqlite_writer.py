@@ -1,11 +1,9 @@
-import datetime
 from sqlalchemy import *
 from sqlalchemy import exc
 from libs import misc, config
 from libs.xls_oprt import ExcelOperator
 
-DEBUG = True
-days = misc.get_month_days(datetime.datetime(2012, 10, 3))
+DEBUG = False
 
 class SQLiteOperator(object):
 
@@ -35,18 +33,6 @@ class SQLiteOperator(object):
         if day:
             self.create_table(day)
             self.default_name = day
-
-        if DEBUG:
-            for day in days:
-                self.table = Table(
-                    unicode(day), self.metadata,
-                    Column('worker_id', Integer, primary_key=True),
-                    *map(lambda key: Column(key, Integer, nullable=True),
-                         SQLiteOperator._db_keys),
-                    extend_existing=True
-                )
-                self.metadata.create_all(self.engine)
-                self.init_table(self.table)
 
 
     def init_table(self, table):
@@ -185,14 +171,5 @@ if __name__ == '__main__':
 
     print writer.is_empty_row(worker_id=1, day='8')
     print writer.is_empty_row(worker_id=111, day='8')
-
-    # writer.insert({
-    #     'worker_id': 5,
-    #     'labor_hour_1': 100,
-    #     'real_amount_1': 600,
-    #     'waste_1': 20,
-    #     'worker_id_aux': 101,
-    #     'labor_hour_aux_to': 10
-    # })
 
 
