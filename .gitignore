@@ -1,9 +1,8 @@
 .idea
 *.xls
 *.pyc
-.ropeproject
-*.db
 *.sqlite
 *.html
 *.htm
 *.7z
+*.bat
