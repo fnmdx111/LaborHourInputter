@@ -27,7 +27,7 @@ class DateRelatedDataProvider(AbstractDataProvider, object):
     def gen_worker_rows(self):
         for id, name in self.worker_dict.iteritems():
             days_contents, labor_hour_sum, waste_sum = [], .0, 0
-            for day_sum, aux, day_waste in self.db_operator.iterate_worker(id):
+            for day_sum, aux, day_waste, _ in self.db_operator.iterate_worker(id):
                 labor_hour_sum += day_sum + aux
                 waste_sum += day_waste
                 for item in self.each_day_f(day_sum, aux, day_waste):

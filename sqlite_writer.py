@@ -132,7 +132,7 @@ class SQLiteOperator(object):
     def get_data_per_day(self, worker_id, day):
         result = self.retrieve(worker_id, unicode(day))
         if not self.is_empty_row(row=result):
-            lh_sum, waste_sum = 0, 0
+            lh_sum, waste_sum, assist_sum = 0, 0, 0
 
             for lh_key, ra_key in misc.take(SQLiteOperator._db_keys[:18], by=2):
                 labor_hour, real_amount = map(result.__getitem__, (lh_key, ra_key))
@@ -146,12 +146,16 @@ class SQLiteOperator(object):
                 waste = result[key]
                 waste_sum += waste if waste else 0
 
+            for key in SQLiteOperator._db_keys[21:23]:
+                assist = result[key]
+                assist_sum += assist if assist else 0
+
             labor_hour_aux_to = result['labor_hour_aux_to']
             labor_hour_aux_to = labor_hour_aux_to if labor_hour_aux_to else 0
 
-            return lh_sum, labor_hour_aux_to, waste_sum
+            return lh_sum, labor_hour_aux_to, waste_sum, assist_sum
 
-        return .0, 0, 0
+        return .0, 0, 0, 0
 
 
     def iterate_worker(self, worker_id):

@@ -141,7 +141,7 @@ class PerformanceDataProvider(AbstractDataProvider, object):
 
         for worker_id, name in misc.sort_dict_keys_numerically(self.worker_dict): # 第一轮for，收集数据，以便计算废品绩效
             lh_sum, waste_sum = 0, 0 # 各种求和
-            for labor_hour, labor_hour_aux, waste in self.db_operator.iterate_worker(worker_id):
+            for labor_hour, labor_hour_aux, waste, _ in self.db_operator.iterate_worker(worker_id):
                 lh_sum += labor_hour + labor_hour_aux
                 waste_sum += waste
 
