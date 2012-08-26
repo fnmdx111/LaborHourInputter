@@ -166,6 +166,16 @@ class Form(QDialog, object):
             self.le_labor_hour_aux.setText(unicode(hour_aux))
 
 
+    def update_labor_hour_aux_from_db(self, day):
+        if not self.le_worker_id_aux.text():
+            self.le_labor_hour_aux.setText(u'')
+            return
+
+        _, aux, _, _ = self.db_operator.get_data_per_day(int(self.le_worker_id_aux.text()), unicode(day))
+        if aux:
+            self.le_labor_hour_aux.setText(unicode(aux))
+
+
     def _validate_text(self, text, error_msg):
         if (not text) or (text == u'0'):
             QMessageBox.critical(self, u'错误', error_msg, QMessageBox.Ok)
@@ -273,6 +283,7 @@ class Form(QDialog, object):
                     self.__getattribute__(attr).setText(unicode(item))
 
             self.update_worker_name(self.le_worker_id_aux.text(), self.le_worker_name_aux)
+            self.update_labor_hour_aux_from_db(day)
             self.update_worker_name(self.le_worker_id.text(), self.le_worker_name)
 
 
