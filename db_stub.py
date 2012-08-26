@@ -10,16 +10,17 @@ from libs.xls_oprt import ExcelOperator
 def gen_worker_data():
     r = []
     for _ in range(9):
-        if randint(1, 2) > 1:
+        if randint(1, 9) > 3:
             r.append('')
             r.append('')
             continue
 
-        labor = randint(300, 1200)
-        if randint(1, 10) > 8:
-            real = randint(300, labor)
+        labor = randint(5000, 8000)
+        if randint(1, 10) > 3:
+            lh = randint(1, 6)
         else:
-            real = randint(labor, 2500)
+            lh = randint(6, 12)
+        real = (labor * lh) / 8
         r.append(labor)
         r.append(real)
 
@@ -51,8 +52,8 @@ def gen_worker_data():
 
 
 if __name__ == '__main__':
-    config.db_echo = True
-    what_month = datetime.datetime(2012, 10, 3)
+    config.db_echo = False
+    what_month = datetime.datetime(2012, 8, 26)
 
     meta_attrs = ['le_day', 'le_month',
                   'le_worker_id']
