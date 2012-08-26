@@ -17,6 +17,7 @@ split_page_at = 43
 
 lh_suffix = '工时'
 w_suffix = '废品'
+p_suffix = '绩效'
 
 short_title_index_pairs = (
     ('单多轴', 1),
@@ -27,6 +28,7 @@ short_title_index_pairs = (
 )
 lh_index_offset = 0
 w_index_offset = 5
+p_index_offset = 10
 
 title_index_pairs = (
     ('单多轴车间', 1),
