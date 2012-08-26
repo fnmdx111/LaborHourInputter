@@ -63,7 +63,7 @@ class WorkerData(object):
     def get_performances(self):
         self.process()
 
-        make_percentage = lambda p: ('%s%%' % (p * 100)) if p else '&nbsp;'
+        make_percentage = lambda p: ('%s%%' % (p * 100)) if p else ''
         self.ratio_attendance = make_percentage(self.ratio_attendance)
         self.ratio_waste = make_percentage(self.ratio_waste)
 
@@ -130,14 +130,7 @@ class PerformanceDataProvider(AbstractDataProvider, object):
             worker_data.perf_grade = _g(worker_data.perf_sum)
 
 
-    def gen_worker_rows(self):
-        def _gen_row(id, name, _cont):
-            return AbstractDataProvider.each_row.format(
-                id=id.encode('utf-8'),
-                name=name.encode('utf-8'),
-                details='\n'.join(_cont)
-            )
-
+    def gen_worker_data(self):
         for worker_id, name in misc.sort_dict_keys_numerically(self.worker_dict): # 第一轮for，收集数据，以便计算废品绩效
             lh_sum, waste_sum = 0, 0 # 各种求和
             for labor_hour, labor_hour_aux, waste, _ in self.db_operator.iterate_worker(worker_id):
@@ -163,8 +156,29 @@ class PerformanceDataProvider(AbstractDataProvider, object):
         for worker_data in map(lambda (item, _): item, self.worker_data.values()):
             worker_data.score_waste = max(0,
                                           worker_data.score_waste - (worker_data.ratio_waste - lowest_ratio) * 100)
+            worker_data.process()
 
         self._gen_grade()
+
+        return misc.sort_dict_keys_numerically(self.worker_data)
+
+
+    def yield_worker_data(self):
+        for worker_id, (worker_data, name) in self.gen_worker_data():
+            if worker_id not in self.worker_dict_show:
+                continue
+            yield worker_id, worker_data.get_performances()
+
+
+    def gen_worker_rows(self):
+        self.gen_worker_data()
+
+        def _gen_row(id, name, _cont):
+            return AbstractDataProvider.each_row.format(
+                id=id.encode('utf-8'),
+                name=name.encode('utf-8'),
+                details='\n'.join(_cont)
+            )
 
         make_nullable = lambda x: x if x else '&nbsp;'
         for worker_id, (worker_data, name) in misc.sort_dict_keys_numerically(self.worker_data):
@@ -195,10 +209,11 @@ if __name__ == '__main__':
         worker_dict = xls_obj.get_id_name_pairs(index)
 
         for num, d in enumerate(misc.take(worker_dict, by=43)):
-            view = ViewWriter(PerformanceDataProvider(title, dict(worker_dict),
-                                                             dict(worker_dict),
-                                                             dict(xls_obj.get_attended_days_count_pairs()),
-                                                             dict(xls_obj.get_work_performance(10 + index))))
+            view = ViewWriter(PerformanceDataProvider(title,
+                                                      dict(worker_dict),
+                                                      dict(worker_dict),
+                                                      dict(xls_obj.get_attended_days_count_pairs()),
+                                                      dict(xls_obj.get_work_performance(config.p_index_offset + index))))
 
             with open('%s%s.html' % (num, title.decode('utf-8')), 'w') as f:
                 print >> f, view
