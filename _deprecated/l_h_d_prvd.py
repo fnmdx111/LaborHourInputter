@@ -1,7 +1,7 @@
 # encoding: utf-8
 from _deprecated.d_r_d_prvd import DateRelatedDataProvider
 from libs import misc, config
-from libs.view_writer import ViewWriter
+from _deprecated.view_writer import ViewWriter
 from libs.xls_oprt import ExcelOperator
 
 
