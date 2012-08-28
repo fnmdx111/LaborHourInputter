@@ -5,6 +5,9 @@ import datetime
 
 
 def take(iterable, by=5):
+    """e.g. list(take([1, 2, 3, 4, 5], by=2))
+         => [[1, 2], [3, 4], [5]]
+    note: the iterable must support slicing"""
     while iterable:
         if len(iterable) < by:
             yield iterable
@@ -14,6 +17,10 @@ def take(iterable, by=5):
 
 
 def take_adj(iterable, by=2):
+    """e.g. list(take_adj([1, 2, 3, 4, 5], by=3))
+         => [[1, 2, 3], [2, 3, 4], [3, 4, 5], [4, 5]]
+    note: though `take_adj' will handle the condition when `len(iterable) % by != 0', but
+          it is strongly recommended that you choose your `by' carefully"""
     while iterable:
         if len(iterable) < by:
             yield iterable + [None]
@@ -24,12 +31,15 @@ def take_adj(iterable, by=2):
 
 
 def interleave(*iterables):
+    """e.g. list(interleave([1, 2, 3], ['a', 'b', 'c'], ['A', 'B', 'C']))
+         => [1, 'a', 'A', 2, 'b', 'B', 3, 'c', 'C']"""
     for zipped in izip(*iterables):
         for item in zipped:
             yield item
 
 
 def concat_prf(prf):
+    """return a function that concatenate the given prefix and it's parameter"""
     return lambda x: prf + str(x)
 
 
@@ -71,11 +81,13 @@ def get_month_day_num(dt=get_today()):
 
 
 def sort_dict_keys_numerically(d):
+    """return key-value pairs that are sorted by the `key'"""
     return sorted(d.iteritems(),
                   cmp=lambda x, y: cmp(int(x[0]), int(y[0])))
 
 
 def invert_dict(d):
+    """invert the given dict as d<k, v> => d'<v, k>"""
     return dict(map(lambda (key, value): (value, key), d.iteritems()))
 
 

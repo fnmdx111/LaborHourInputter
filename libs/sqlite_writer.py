@@ -36,6 +36,8 @@ class SQLiteOperator(object):
 
 
     def init_table(self, table):
+        """insert worker rows into the given table object according to self.worker_dict
+        return None"""
         if not self.worker_dict:
             return
 
@@ -51,6 +53,8 @@ class SQLiteOperator(object):
 
 
     def create_table(self, name):
+        """create a table with the given name, if it is already created, return it from self.metadata.tables
+        note: this is rather slow, but i haven't found a better solution"""
         name = name if name else self.default_name
 
         if name in self.metadata.tables:
@@ -74,21 +78,26 @@ class SQLiteOperator(object):
         return self.table
 
 
-    def write_back(self, dumped, day=None):
+    def write_back(self, dumped, day):
+        """write the data in `dumped' into the table with the given table name(i.e. the `day' parameter)"""
         table = self.create_table(day)
         self.connection.execute(table.update().
                                       where(table.c.worker_id == dumped['worker_id']).
                                       values(**dumped))
 
 
-    def write_back_single(self, worker_id_aux, labor_hour_aux, day=None):
+    def write_back_single(self, worker_id_aux, labor_hour_aux, day):
+        """this function does the same job as `SQLiteOperator.write_back' except that it just write
+        `labor_hour_aux' into the row where worker_id == `worker_id_aux'"""
         table = self.create_table(day)
         self.connection.execute(table.update().
                                       where(table.c.worker_id == worker_id_aux).
                                       values(labor_hour_aux_to=labor_hour_aux))
 
 
-    def retrieve(self, worker_id, day=None):
+    def retrieve(self, worker_id, day):
+        """retrieve the data of the worker whose id equals `worker_id' in the table of `day'
+        return RowProxy"""
         table = self.create_table(day)
         result =  self.connection.execute(
             table.select().
@@ -100,6 +109,9 @@ class SQLiteOperator(object):
 
 
     def is_empty_row(self, worker_id=None, row=None, day=None):
+        """tests if
+        1) the data row of the worker with the id of `worker_id' on the day of `day' is empty;
+        2) the given row is empty"""
         row = self.retrieve(worker_id, day) if not row else row
         if not row:
             return True
@@ -108,13 +120,16 @@ class SQLiteOperator(object):
 
 
     def get_month_days_in_db(self):
+        """return the days of the current stored month in the pattern of [28, .., 1, 2, 3, .., 27]"""
         l = map(lambda item: item[0], misc.sort_dict_keys_numerically(self.metadata.tables))
-        l = l[27:] + l[:27]
+        if len(l) > 27:
+            l = l[27:] + l[:27]
 
         return l
 
 
     def get_data_per_day(self, worker_id, day):
+        """return the calculated data(e.g. sums) of the worker with the id of `worker_id' on the day of `day'"""
         result = self.retrieve(worker_id, unicode(day))
         if not self.is_empty_row(row=result):
             lh_sum, waste_sum, assist_sum = 0, 0, 0
@@ -144,13 +159,15 @@ class SQLiteOperator(object):
 
 
     def iterate_worker(self, worker_id):
+        """yield the data per day of the worker with the id of `worker_id' in the order same as
+        `SQLiteOperator.get_month_days_in_db'"""
         for day in self.get_month_days_in_db():
             yield self.get_data_per_day(worker_id, day)
 
 
     def __del__(self):
+        """destructor"""
         self.connection.close()
-
 
 
 
@@ -164,7 +181,7 @@ if __name__ == '__main__':
         'waste_1': 20,
         'worker_id_aux': 101,
         'labor_hour_aux_to': 10
-    })
+    }, day='5')
 
     for item in writer.retrieve(1, day='9'):
         print item
